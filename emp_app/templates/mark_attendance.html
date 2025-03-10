@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}Mark Attendance{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow-lg border-0">
+        <div class="card-header bg-gradient-primary text-white p-4">
+          <h3 class="mb-0">
+            <i class="fas fa-clipboard-check me-2"></i>Mark Attendance
+          </h3>
+        </div>
+        <div class="card-body p-4">
+          <form method="POST" class="needs-validation" novalidate id="attendanceForm">
+            {% csrf_token %}
+            
+            <div class="row mb-4">
+              <div class="col-md-12">
+                <label for="employee" class="form-label fw-bold">
+                  <i class="fas fa-user me-1 text-primary"></i> Employee
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light">
+                    <i class="fas fa-user-circle"></i>
+                  </span>
+                  <select id="employee" name="employee" class="form-select form-select-lg" required>
+                    <option value="" selected disabled>-- Select Employee --</option>
+                    {% for employee in employees %}
+                    <option value="{{ employee.id }}">{{ employee.first_name }} {{ employee.last_name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="invalid-feedback">
+                    Please select an employee.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-12">
+                <label for="date" class="form-label fw-bold">
+                  <i class="fas fa-calendar-alt me-1 text-primary"></i> Date
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light">
+                    <i class="fas fa-calendar"></i>
+                  </span>
+                  <input type="date" id="date" name="date" class="form-control form-control-lg" required>
+                  <div class="invalid-feedback">
+                    Please select a date.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-12">
+                <label for="status" class="form-label fw-bold">
+                  <i class="fas fa-chart-bar me-1 text-primary"></i> Status
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light">
+                    <i class="fas fa-user-clock"></i>
+                  </span>
+                  <select id="status" name="status" class="form-select form-select-lg" required>
+                    <option value="" selected disabled>-- Select Status --</option>
+                    <option value="Present">Present</option>
+                    <option value="Absent">Absent</option>
+                    <option value="Half-Day">Half-Day</option>
+                    <option value="Work From Home">Work From Home</option>
+                    <option value="On Leave">On Leave</option>
+                  </select>
+                  <div class="invalid-feedback">
+                    Please select attendance status.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+              <button type="button" class="btn btn-light btn-lg px-4" onclick="window.history.back();">
+                <i class="fas fa-times me-1"></i> Cancel
+              </button>
+              <button type="submit" class="btn btn-primary btn-lg px-5">
+                <i class="fas fa-save me-1"></i> Submit
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card-footer bg-light p-3">
+          <div class="d-flex align-items-center">
+            <div class="text-muted small">
+              <i class="fas fa-info-circle me-2 text-primary"></i>
+              Attendance submitted will be reviewed by the administrator.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Notification Popup -->
+<div id="notification" class="fixed top-4 right-4 transform translate-x-full transition-transform duration-300 bg-white shadow-lg rounded-lg p-4 flex items-center space-x-3 hidden">
+  <i id="notification-icon" class="ri-checkbox-circle-line text-green-500 text-xl"></i>
+  <span id="notification-message" class="text-gray-700">Attendance marked successfully!</span>
+</div>
+
+<script>
+  // Bootstrap form validation
+  (function () {
+    'use strict'
+    var forms = document.querySelectorAll('.needs-validation')
+    Array.prototype.slice.call(forms)
+      .forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+          if (!form.checkValidity()) {
+            event.preventDefault()
+            event.stopPropagation()
+          }
+          form.classList.add('was-validated')
+        }, false)
+      })
+  })()
+
+  // Set default date to today
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('date').valueAsDate = new Date();
+  });
+
+  // Function to show notification
+  function showNotification(message, isSuccess) {
+    const notification = document.getElementById("notification");
+    const icon = document.getElementById("notification-icon");
+    const messageElement = document.getElementById("notification-message");
+
+    // Set the icon and message
+    icon.className = isSuccess
+      ? "ri-checkbox-circle-line text-green-500 text-xl"
+      : "ri-close-circle-line text-red-500 text-xl";
+    messageElement.textContent = message;
+
+    // Show the notification
+    notification.classList.remove("hidden");
+    notification.style.transform = "translateX(0)";
+
+    // Hide the notification after 3 seconds
+    setTimeout(() => {
+      notification.style.transform = "translateX(100%)";
+      notification.classList.add("hidden");
+    }, 3000);
+  }
+
+  // Handle form submission
+  document.getElementById("attendanceForm").addEventListener("submit", function (e) {
+    e.preventDefault(); // Prevent the default form submission
+
+    const formData = new FormData(this);
+
+    fetch("{% url 'mark_attendance' %}", {
+      method: "POST",
+      body: formData,
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}", // Include CSRF token for Django
+      },
+    })
+      .then((response) => response.text())
+      .then((data) => {
+        if (data === "Attendance marked successfully") {
+          showNotification("Attendance marked successfully!", true);
+          this.reset(); // Clear the form
+        } else {
+          showNotification("An error occurred. Please try again.", false);
+        }
+      })
+      .catch((error) => {
+        showNotification("An error occurred. Please try again.", false);
+      });
+  });
+</script>
+{% endblock %}
